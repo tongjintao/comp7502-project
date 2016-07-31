@@ -1,4 +1,3 @@
-#Space for capture frame and recognize
 #Esc for exit
 
 import cv2
