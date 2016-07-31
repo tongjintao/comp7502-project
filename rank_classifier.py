@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from scipy.signal import argrelextrema
 #from matplotlib import pyplot as pyplot
 
 templateObjs = {}
@@ -53,9 +54,39 @@ def make_histogram(contour):
 	x_list = transform_list(x_list, size)
 	y_list = transform_list(y_list, size)
 	
-	x_histogram = np.histogram(x_list, bins=np.arange(size+1), density=True)
+	x_histogram = np.histogram(x_list, bins=np.arange(size+1), density=True) 
 	y_histogram = np.histogram(y_list, bins=np.arange(size+1), density=True)
+	
 	return x_histogram, y_histogram
+
+def find_threshold(img_histogram):
+	# find local maxima
+	img_histogram = zip(img_histogram[0], img_histogram[1])
+	local_maxima = img_histogram
+	local_maxima_n = []
+
+	while not len(local_maxima_n) == 2:
+		# repeat finding local maxima until only two local maxima left
+		local_maxima_n = []
+		for i in range(len(local_maxima)):
+			if i == 0:
+				if local_maxima[i][0] > local_maxima[i+1][0]:
+					local_maxima_n.append(local_maxima[i])
+			elif i == len(local_maxima)-1:
+				if local_maxima[i][0] > local_maxima[i-1][0]:
+					local_maxima_n.append(local_maxima[i])
+			else:
+				if local_maxima[i][0] > local_maxima[i-1][0] and  local_maxima[i][0] > local_maxima[i+1][0]:
+					local_maxima_n.append(local_maxima[i])
+
+		local_maxima = local_maxima_n
+
+	print local_maxima
+
+	if local_maxima[0][1] > local_maxima[1][1]:
+		return (local_maxima[0][1] + local_maxima[1][1])/ 2
+	else:
+		return (local_maxima[1][1] + local_maxima[0][1])/ 2
 
 def load_template():
 	for templateName in rank_list:
@@ -94,8 +125,13 @@ def recognize_card(img):
 	img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	img_gray = cv2.GaussianBlur(img_gray, (3,3),0)	
 
+	# find threshold to best recognize image
+	img_histogram = np.histogram(img_gray.flatten(), bins=np.arange(256), density=True) 
+	threshold = find_threshold(img_histogram)
+		
 	# threshold the image
-	ret, img_threshold = cv2.threshold(img_gray, 200, 255, cv2.THRESH_BINARY)
+	ret, img_threshold = cv2.threshold(img_gray, threshold, 255, cv2.THRESH_BINARY)
+	show_image('image', img_threshold)
 
 	# find contours in the image
 	ctrs, hier = cv2.findContours(img_threshold.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
@@ -138,19 +174,13 @@ def recognize_card(img):
 		cv2.rectangle(img, (rect[0],rect[1]), (rect[0]+rect[2],rect[1]+rect[3]), (127,255,0),1)
 
 	# show image
-	cv2.imshow('image', img)
-	cv2.imshow('image_gray', img_gray)
-	cv2.imshow('image_threshold', img_threshold)
-
-	cv2.waitKey(0)
-	cv2.destroyAllWindows()
-
-
+	show_image('image', img)
 
 load_template()
 
 #img = cv2.imread('rank_template/three.png')
-img = cv2.imread('playingcard/diamond3.jpg')
+#img = cv2.imread('playingcard/diamond3.jpg')
+img = cv2.imread('sift/club3.jpg')
 #img = cv2.imread('test_images/heart3.jpg')
 
 recognize_card(img)
