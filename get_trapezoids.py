@@ -10,6 +10,7 @@ import cv2
 parser = argparse.ArgumentParser()
 parser.add_argument("--file", dest="filename", help="Input file name.")
 parser.add_argument("--aspect", dest="aspect", default=1.0, help="Starting aspect ratio (default is 1).")
+parser.add_argument("--binary", dest="binary", action="store_true", default=False, help="Produce binary image only")
 
 options = parser.parse_args()
 
@@ -89,6 +90,10 @@ while has_error:
 
         blurred_image = cv2.GaussianBlur(img, (FILTER_SIZE, FILTER_SIZE), 6)
         thresh, binary_image = cv2.threshold(blurred_image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+
+        if options.binary:
+            cv2.imwrite("binary.bmp", binary_image)
+            exit(0)
 
         test_img = binary_image.copy()
 
