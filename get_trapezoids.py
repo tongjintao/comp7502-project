@@ -1,8 +1,18 @@
 #!/usr/bin/python
 
+import argparse
 import numpy as np
 import scipy.spatial
 import cv2
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--file", dest="filename", help="Input file name.")
+
+options = parser.parse_args()
+
+if options.filename is None:
+    parser.print_help()
+    exit(1)
 
 np.set_printoptions(threshold=np.nan)
 
@@ -20,7 +30,7 @@ OUTPUT_DIM = (600, 600)  # Notice the (x, y) ordering in OpenCV
 
 # Variables
 
-imgname = "test_images/whole.png"
+imgname = options.filename
 
 img = cv2.imread(imgname, cv2.IMREAD_GRAYSCALE)
 
