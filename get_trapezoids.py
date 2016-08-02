@@ -30,7 +30,7 @@ FILTER_SIZE = 7
 
 MIN_ASPECT_RATIO = 0.6
 
-DELTA_DELTA = 0.01
+DELTA_DELTA = 0.001
 
 OUTPUT_DIM = (600, 600)  # Notice the (x, y) ordering in OpenCV
 
@@ -39,7 +39,8 @@ OUTPUT_DIM = (600, 600)  # Notice the (x, y) ordering in OpenCV
 image_name = options.filename
 
 colored_image = cv2.imread(image_name)
-image = cv2.imread(image_name, cv2.IMREAD_GRAYSCALE)
+mean_shifted_image = cv2.pyrMeanShiftFiltering(colored_image, FILTER_SIZE, 32)
+image = cv2.cvtColor(mean_shifted_image, cv2.COLOR_BGR2GRAY)
 width = image.shape[1]
 height = image.shape[0]
 corners = np.array([[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]], dtype=np.float32)
@@ -108,7 +109,13 @@ while has_error:
                 break
             all_seen = True
             for blob in blobs:
-                cv2.floodFill(test_img, mask, (int(blob.pt[0]), int(blob.pt[1])), DUMMY_VALUE, flags = (8 | cv2.FLOODFILL_MASK_ONLY | (255 << 8)))
+                coords = []
+                for x in (0, 1):
+                    for y in (0, 1):
+                        if test_img[int(blob.pt[1]) + y, int(blob.pt[0]) + x] == 0:
+                            coords.append((int(blob.pt[1]) + y, int(blob.pt[0] + x)))
+                for (x, y) in coords:
+                    cv2.floodFill(test_img, mask, (y, x), DUMMY_VALUE, flags = (8 | cv2.FLOODFILL_MASK_ONLY | (255 << 8)))
                 if blob.pt not in seen_points:
                     all_seen = False
                     seen_points.add(blob.pt)
@@ -116,15 +123,14 @@ while has_error:
             if all_seen:
                 break
 
-        # Perform a final dilation to remove dirt
-        # (median filter should work as well)
+        # Perform a dilation to remove dirt
 
-        kernel = np.ones((FILTER_SIZE, FILTER_SIZE), dtype=np.uint8)
-        dilated = cv2.dilate(test_img, kernel, iterations=1)
+#        kernel = np.ones((FILTER_SIZE, FILTER_SIZE), dtype=np.uint8)
+#        dilated = cv2.dilate(test_img, kernel, iterations=1)
 
-        test_img = dilated
+#        test_img = dilated
 
-        # Select the largest area that looks like a card
+        # Select the (white) areas that look like a card
 
         ret, markers = cv2.connectedComponents(test_img)
         n_components = np.max(markers)
@@ -156,7 +162,7 @@ while has_error:
             if np.sum((markers == i) * (mask[1:-1, 1:-1])) == 0:
                 continue
             # Aspect ratio fits our detection
-            if (max_xs[i] - min_xs[i]) / (max_ys[i] - min_ys[i]) >= MIN_ASPECT_RATIO and (max_xs[i] - min_xs[i]) / (max_ys[i] - min_ys[i]) <= 1 / MIN_ASPECT_RATIO:
+            if np.float(max_xs[i] - min_xs[i]) / np.float(max_ys[i] - min_ys[i]) >= MIN_ASPECT_RATIO and np.float(max_xs[i] - min_xs[i]) / np.float(max_ys[i] - min_ys[i]) <= 1 / MIN_ASPECT_RATIO:
                 is_eligible[i] = True
 
         eligible_regions = []
@@ -183,7 +189,30 @@ while has_error:
                 if approx.shape[0] == last_approx_shape:
                     delta += DELTA_DELTA
                 last_approx_shape = approx.shape[0]
+            if len(approx.shape) > 2:
+                approx = approx.reshape((-1, approx.shape[2]))
             approxs.append(approx)
+
+        # Delete if a box is fully inscribed within another
+
+        to_keep = []
+        for i in range(len(eligible_regions)):
+            is_inscribed = False
+            min_coords = np.min(approxs[i], axis=0)
+            max_coords = np.max(approxs[i], axis=0)
+            for j in range(len(eligible_regions)):
+                if j == i:
+                    continue
+                min_coords2 = np.min(approxs[j], axis=0)
+                max_coords2 = np.max(approxs[j], axis=0)
+                if np.all(min_coords >= min_coords2) and np.all(max_coords <= max_coords2):
+                    is_inscribed = True
+                    break
+            if not is_inscribed:
+                to_keep.append(i)
+
+        approxs = [approxs[k] for k in to_keep]
+        eligible_regions = [eligible_regions[k] for k in to_keep]
 
         print(approxs, file=sys.stderr)
 
@@ -210,8 +239,6 @@ output_corners = np.array([[0, 0], [OUTPUT_DIM[0] - 1, 0], [OUTPUT_DIM[0] - 1, O
 output_images = []
 for (region, approx) in zip(eligible_regions, approxs):
     perspective = approx.astype(np.float32)
-    if len(perspective.shape) > 2:
-        perspective = perspective.reshape((-1, perspective.shape[2]))
     perspective /= current_aspect_ratio
     transform = cv2.getPerspectiveTransform(perspective, output_corners)
     warp = cv2.warpPerspective(colored_image, transform, OUTPUT_DIM)
