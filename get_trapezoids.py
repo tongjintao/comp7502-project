@@ -38,9 +38,13 @@ OUTPUT_DIM = (600, 600)  # Notice the (x, y) ordering in OpenCV
 
 image_name = options.filename
 
-colored_image = cv2.imread(image_name)
-mean_shifted_image = cv2.pyrMeanShiftFiltering(colored_image, FILTER_SIZE, 32)
-image = cv2.cvtColor(mean_shifted_image, cv2.COLOR_BGR2GRAY)
+try:
+    colored_image = cv2.imread(image_name)
+    mean_shifted_image = cv2.pyrMeanShiftFiltering(colored_image, FILTER_SIZE, 32)
+    image = cv2.cvtColor(mean_shifted_image, cv2.COLOR_BGR2GRAY)
+except:
+    image = cv2.imread(image_name, cv2.IMREAD_GRAYSCALE)
+
 width = image.shape[1]
 height = image.shape[0]
 corners = np.array([[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]], dtype=np.float32)
