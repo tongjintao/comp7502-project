@@ -32,7 +32,7 @@ MIN_ASPECT_RATIO = 0.6
 
 DELTA_DELTA = 0.001
 
-OUTPUT_DIM = (600, 600)  # Notice the (x, y) ordering in OpenCV
+OUTPUT_DIM = (512, 512)  # Notice the (x, y) ordering in OpenCV
 
 # Variables
 
