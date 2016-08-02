@@ -267,6 +267,7 @@ def recognize_card(img):
 	# crop out the top left corner
 	img_threshold = crop_img(img_threshold, 0, 0, width/3, height/3)
 
+	show_image('croped',img_threshold)
 	# find contours in the image
 	ctrs, hier = cv2.findContours(img_threshold.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)	
 	
@@ -281,15 +282,17 @@ def recognize_card(img):
 load_template_rank()
 load_template_suit()
 
+directory = 'sift'
 
-imgs = os.listdir(os.getcwd()+'/playingcard')
+imgs = os.listdir(os.getcwd()+'/' +directory)
 
 for img in imgs:
 
-	if 'cluba.jpg' not in img:
+	if '.jpg' not in img:
 		continue
 	print img
-	img = cv2.imread('playingcard/'+img)
+	img = cv2.imread(directory+'/'+img)
 	# recognize_card(img)
+	show_image('img',img)
 	suit, rank = recognize_card(img)
 	print suit, rank
