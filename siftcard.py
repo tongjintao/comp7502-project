@@ -12,7 +12,7 @@ class siftcard(object):
 			modelCard = cv2.imread(imagePath, 0)
 			modelSiftValues = getSiftFeatureValue(modelCard)
 			cardName = imagePath.replace(".jpg", "")
-			modelCards[cardName] = modelSiftValues
+			self.modelCards[cardName] = modelSiftValues
 
 	def getSiftFeatureValue(img):
 		_, des = self.cvSift.detectAndCompute(img, None)
@@ -26,7 +26,7 @@ class siftcard(object):
 		maxGood = 6
 		bestMatch = None
 
-		for modelCardName,modelDes in modelCards.items():	
+		for modelCardName,modelDes in self.modelCards.items():	
 			matches = self.bf.knnMatch(camSiftValues, modelDes, k=2)
 			#matches = sift.match(camSiftValues, modelDes)
 			good = 0
