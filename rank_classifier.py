@@ -1,16 +1,17 @@
 import numpy as np
 import cv2
+import matplotlib.pyplot as plt
 
 templateObjs = {}
 #rank_list = ["ace", "two", "three", "four", "five", "six", "seven", "eight", "nine", "jack", "queen", "king"]
-rank_list = [ "queen"]
+rank_list = ["seven" ,"queen"]
 
 def highlight_contour(img, ctr, name='highlight'):
 	# highlight proceed contour in green
 	img_highlight = img.copy()
 	for point in ctr:
 		contour_point = map(tuple,point)[0]
-		cv2.circle(img_highlight, contour_point , 1, (127,0,127), 5)
+		cv2.circle(img_highlight, contour_point , 1, (127,0,127), 1)
 	show_image(name, img_highlight)
 
 def show_image(img_title, img):
@@ -54,9 +55,14 @@ def make_histogram(contour):
 		y_list.append(contour_point_tuple[1])
 
 	# resize it into a 10-ranged list of number for easier histogram comparison
-	size = 8
+	size = 1024
 	x_list = transform_list(x_list, size)
 	y_list = transform_list(y_list, size)
+
+	n, bins, patches = plt.hist(x_list, normed=True)
+	plt.show()
+	n, bins, patches = plt.hist(y_list, normed=True)
+	plt.show()
 	
 	x_histogram = np.histogram(x_list, bins=np.arange(size+1), density=True) 
 	y_histogram = np.histogram(y_list, bins=np.arange(size+1), density=True)
@@ -128,7 +134,13 @@ def load_template():
 		#highlight_contour(template_gray, contour_whole)
 
 		x_histogram, y_histogram = make_histogram(contour_whole)
-		# highlight_contour(template_gray, contour_whole)
+		# print x_histogram
+		# print y_histogram
+		# #plt.plot(x_histogram[0].tolist())
+
+		# n, bins, patches = plt.hist(x_histogram[0],1)
+		# plt.show()
+		highlight_contour(template_gray, contour_whole)
 		templateObjs[templateName] = (contour_whole, x_histogram, y_histogram)
 
 def compare_histogram_chisquare(hist1, hist2):
@@ -162,11 +174,8 @@ def recognize_card(img):
 
 	height, width = img_threshold.shape
 
-	# crop out the top left corner
-	img_threshold = crop_img(img_threshold, 0, 0, width/4, height/4)
-
 	# find contours in the image
-	ctrs, hier = cv2.findContours(img_threshold.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)	
+	ctrs, hier = cv2.findContours(img_threshold.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)	
 	possible_ranks = {}
 
 	for rank, rank_value in templateObjs.items():
@@ -181,14 +190,13 @@ def recognize_card(img):
 			# if have children, include all sub-contour into contour_whole and break
 			if hier[0][index][2] != -1:
 				child = [index]
-				contours_whole = ctrs[index]
+				contour_whole = ctrs[index]
 				for child_i in range(index+1, len(ctrs)):
 					if hier[0][child_i][3] == index:
-						highlight_contour(img, ctrs[index], "contour_child")
+						highlight_contour(img, ctrs[child_i], "contour_child")
 						contour_whole = np.concatenate((contour_whole, ctrs[child_i]))
 					else:
 						break
-				break
 			else:
 				contour_whole = ctrs[index]
 
@@ -232,7 +240,7 @@ def recognize_card(img):
 	# for rank, x_y_diff in possible_ranks.items():
 	# 	print rank, x_y_diff
 
-	print min(possible_ranks.items(), key=lambda x: x[1])[0]
+	#print min(possible_ranks.items(), key=lambda x: x[1])[0]
 
 	# Get rectangles contains each contour 
 	rects = [cv2.boundingRect(ctr) for ctr in ctrs] 
@@ -252,12 +260,14 @@ load_template()
 #img = cv2.imread('sift/club3.jpg')
 #img = cv2.imread('test_images/heart3.jpg')
 
+img = cv2.imread('rank_template/queen.png')
+
 #img = cv2.imread('sift/club7.jpg')
 #img = cv2.imread('test_images/club7.jpg')
 
-img = cv2.imread('playingcard/heartq.jpg')
+#img = cv2.imread('playingcard/heartq.jpg')
 
-recognize_card(img)
+#recognize_card(img)
 
 
 
