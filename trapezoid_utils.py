@@ -97,7 +97,7 @@ def get_trapezoids(colored_image):
 
     # Select the (white) areas that look like a card
 
-    contour_image, contours, hierarchy = cv2.findContours(test_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(test_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
     n_components = len(contours)

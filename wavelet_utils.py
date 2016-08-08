@@ -7,6 +7,7 @@ import numpy as np
 import scipy.spatial
 import cv2
 import pywt
+import copy
 
 # Constants
 
@@ -36,7 +37,7 @@ def recognize_card(img):
 
     coefs = pywt.wavedec2(binary, WAV, level=COMPRESSION_LEVEL, mode='per')
 
-    coefs2 = coefs.copy()
+    coefs2 = copy.copy(coefs)
 
     for i in range(1, len(coefs)):
         cH, cV, cD = (np.zeros(coefs[i][0].shape), np.zeros(coefs[i][1].shape), np.zeros(coefs[i][2].shape))

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 rank_templates = {}
 suit_templates = {}
 rank_list = ["ace", "two", "three", "four", "five", "six", "seven", "eight", "nine", "jack", "queen", "king"]
-#rank_list = ["eight"]
+#rank_list = ["eight", "nine", "jack", "queen", "king"]
 suit_list = ["heart", "spade", "club", "diamond"]
 # suit_list = ["heart"]
 
@@ -27,7 +27,7 @@ def crop_contour(img_threshold, ctr):
 	# crop out contour 
 	x,y,w,h = cv2.boundingRect(ctr)
 	ctr_crop = img_threshold[y:y+h, x:x+w]
-	show_image('img_threshold', ctr_crop)
+	#show_image('img_threshold', ctr_crop)
 
 def crop_img(img_threshold, x, y, w, h):
 	# crop out image
@@ -68,12 +68,13 @@ def make_histogram_pixel(crop_img):
 				x_list.append(w)
 
 	n, bins, patches = plt.hist(x_list, normed=True)
-	plt.show()
+	#plt.show()
 	n, bins, patches = plt.hist(y_list, normed=True)
-	plt.show()
+	#plt.show()
 
-	x_histogram = np.histogram(x_list, bins=np.arange(width+1, step=width/size), density=True) 
-	y_histogram = np.histogram(y_list, bins=np.arange(height+1, step=height/size), density=True)
+
+	x_histogram = np.histogram(x_list, bins=np.linspace(0, width, num=size), density=True) 
+	y_histogram = np.histogram(y_list, bins=np.linspace(0, width, num=size), density=True) 
 
 	return x_histogram, y_histogram
 
@@ -118,25 +119,22 @@ def load_template_suit():
 		contours, hierarchy = cv2.findContours(template_gray.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
 		# Get rectangles contains each contour 
-		rects = [cv2.boundingRect(ctr) for ctr in contours] 
+		rect = cv2.boundingRect(contours[1])
 
-		for rect in rects:
-			img_rec = template.copy()
-			ctr_crop = template_gray[rect[0]:rect[0]+rect[2], rect[1]:rect[1]+rect[3]]
-			x_histogram, y_histogram = make_histogram_pixel(ctr_crop)
-			print x_histogram
-			print y_histogram
+		img_rec = template.copy()
+		ctr_crop = template_gray[rect[1]:rect[1]+rect[3], rect[0]:rect[0]+rect[2]]
+		x_histogram, y_histogram = make_histogram_pixel(ctr_crop)
 
-			# draw the rectangles
-			cv2.rectangle(img_rec, (rect[0],rect[1]), (rect[0]+rect[2],rect[1]+rect[3]), (127,255,0),1)
-			show_image('img_rect_contour', img_rec)
+		# draw the rectangles
+		cv2.rectangle(img_rec, (rect[0],rect[1]), (rect[0]+rect[2],rect[1]+rect[3]), (127,255,0),1)
+		#show_image('img_rect_contour', img_rec)
 
-		#refine later 
-		#suit_templates[suit] = (contour_whole, x_histogram, y_histogram)
+		suit_templates[suit] = (contours[1], x_histogram, y_histogram)
 	
 def load_template_rank():
 
 	for rank in rank_list:
+
 		template = cv2.imread("rank_template/" + rank + ".png")
 		
 		# convert to grayscale and apply Gaussian filtering and thresholding
@@ -146,26 +144,18 @@ def load_template_rank():
 
 		contours, hierarchy = cv2.findContours(template_gray.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
-		for index in range(len(contours)):
-			# skip outer contour
-			if hierarchy[0][index][3] == -1:
-				continue
-			# if have children, include all sub-contour into contour_whole and break
-			if hierarchy[0][index][2] != -1:
-				child = [index]
-				contour_whole = contours[index]
-				for child_i in range(index+1, len(contours)):
-					if hierarchy[0][child_i][3] == index:
-						contour_whole = np.concatenate((contour_whole, contours[child_i]))
-					else:
-						break
-				break
-			# return the last contour as template
-			if hierarchy[0][index][0] == -1:
-				contour_whole = contours[index]
+		# Get rectangles contains each contour 
+		rect = cv2.boundingRect(contours[1])
 
-		x_histogram, y_histogram = make_histogram(contour_whole)
-		rank_templates[rank] = (contour_whole, x_histogram, y_histogram)
+		img_rec = template.copy()
+		ctr_crop = template_gray[rect[1]:rect[1]+rect[3], rect[0]:rect[0]+rect[2]]
+		x_histogram, y_histogram = make_histogram_pixel(ctr_crop)
+
+		# draw the rectangles
+		cv2.rectangle(img_rec, (rect[0],rect[1]), (rect[0]+rect[2],rect[1]+rect[3]), (127,255,0),1)
+		#show_image('img_rect_contour', img_rec)
+
+		rank_templates[rank] = (contours[1], x_histogram, y_histogram)
 
 def compare_histogram_chisquare(hist1, hist2):
 	# calculate difference in histogram by chisquare
@@ -215,7 +205,7 @@ def recognize_rank(contours, hier):
 					possible_ranks[rank] = x_y_diff
 	return possible_ranks
 
-def recognize_suit(contours, hier):
+def recognize_suit(img, contours, rects):
 	possible_suits = {}
 	for suit, suit_value in suit_templates.items():
 
@@ -224,23 +214,14 @@ def recognize_suit(contours, hier):
 			# screen out contour that are too small
 			if len(contours[index]) < 30:
 				continue
-			
-			# if have children, include all sub-contour into contour_whole and break
-			if hier[0][index][2] != -1:
-				child = [index]
-				contour_whole = contours[index]
-				for child_i in range(index+1, len(contours)):
-					if hier[0][child_i][3] == index:
-						contour_whole = np.concatenate((contour_whole, contours[child_i]))
-					else:
-						break
-			else:
-				contour_whole = contours[index]
-			
 
+			rect = rects[index]
 
 			# make histogram and compare difference with chisquare method
-			x_histogram, y_histogram = make_histogram(contour_whole)
+			ctr_crop = img[rect[1]:rect[1]+rect[3], rect[0]:rect[0]+rect[2]]
+			x_histogram, y_histogram = make_histogram_pixel(ctr_crop)
+
+			# compare histogram
 			x_diff_chisquare = compare_histogram_chisquare(x_histogram[0].tolist(), suit_x_histogram[0].tolist())
 			y_diff_chisquare = compare_histogram_chisquare(y_histogram[0].tolist(), suit_y_histogram[0].tolist())
 			x_y_diff = x_diff_chisquare * y_diff_chisquare 
@@ -277,32 +258,34 @@ def recognize_card(img):
 	show_image('croped',img_threshold)
 	# find contours in the image
 	ctrs, hier = cv2.findContours(img_threshold.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)	
-	
-	possible_suits = recognize_suit(ctrs, hier)
+
+	rects = [cv2.boundingRect(contour) for contour in ctrs]
+
+	possible_suits = recognize_suit(img_gray, ctrs, rects)
 	suit = min(possible_suits.items(), key=lambda x: x[1])[0]
 
-	possible_ranks = recognize_rank(ctrs, hier)
-	rank = min(possible_ranks.items(), key=lambda x: x[1])[0]
+	# possible_ranks = recognize_rank(ctrs, hier)
+	# rank = min(possible_ranks.items(), key=lambda x: x[1])[0]
 	
-	return suit, rank
+	return suit #, rank
 
-#load_template_rank()
-load_template_suit()
 
-directory = 'sift'
+if __name__ == "__main__":
+	load_template_rank()
+	load_template_suit()
 
-imgs = os.listdir(os.getcwd()+'/' +directory)
+	directory = 'sift'
 
-"""
+	imgs = os.listdir(os.getcwd()+'/' +directory)
 
-for img in imgs:
+	for img in imgs:
 
-	if '.jpg' not in img:
-		continue
-	print img
-	img = cv2.imread(directory+'/'+img)
-	# recognize_card(img)
-	show_image('img',img)
-	suit, rank = recognize_card(img)
-	print suit, rank
-"""
+		if '.jpg' not in img:
+			continue
+		print img
+		img = cv2.imread(directory+'/'+img)
+		# recognize_card(img)
+		#show_image('img',img)
+		suit = recognize_card(img)
+		print suit #, rank
+

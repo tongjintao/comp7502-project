@@ -26,7 +26,7 @@ def crop_contour(img_threshold, ctr):
 	# crop out contour 
 	x,y,w,h = cv2.boundingRect(ctr)
 	ctr_crop = img_threshold[y:y+h, x:x+w]
-	show_image('img_threshold', ctr_crop)
+	#show_image('img_threshold', ctr_crop)
 
 def crop_img(img_threshold, x, y, w, h):
 	# crop out image
@@ -229,8 +229,6 @@ def recognize_suit(contours, hier):
 						break
 			else:
 				contour_whole = contours[index]
-			
-
 
 			# make histogram and compare difference with chisquare method
 			x_histogram, y_histogram = make_histogram(contour_whole)
@@ -256,10 +254,11 @@ def recognize_card(img):
 
 	# find threshold to best recognize image
 	img_histogram = np.histogram(img_gray.flatten(), bins=np.arange(256), density=True) 
-	threshold = find_threshold(img_histogram)
+	#threshold = find_threshold(img_histogram)
 	
 	# threshold the image
-	ret, img_threshold = cv2.threshold(img_gray, threshold, 255, cv2.THRESH_BINARY)
+	threshold, img_threshold = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
+
 	#show_image('image', img_threshold)
 
 	height, width = img_threshold.shape
@@ -272,27 +271,42 @@ def recognize_card(img):
 	ctrs, hier = cv2.findContours(img_threshold.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)	
 	
 	possible_suits = recognize_suit(ctrs, hier)
-	suit = min(possible_suits.items(), key=lambda x: x[1])[0]
+	if len(possible_suits) == 0:
+		suit = None	
+	else:
+		suit = min(possible_suits.items(), key=lambda x: x[1])[0]
+
 
 	possible_ranks = recognize_rank(ctrs, hier)
-	rank = min(possible_ranks.items(), key=lambda x: x[1])[0]
 	
-	return suit, rank
+	if len(possible_ranks) ==0:
+		rank = None
+	else:
+		rank = min(possible_ranks.items(), key=lambda x: x[1])[0]
+	
+	
+	if suit == None or rank == None:
+		guess = None
+	else: 
+		guess = suit+' '+rank
 
-load_template_rank()
-load_template_suit()
+	return guess
 
-directory = 'sift'
+if __name__ == "__main__":
+	load_template_rank()
+	load_template_suit()
 
-imgs = os.listdir(os.getcwd()+'/' +directory)
+	directory = 'sift'
 
-for img in imgs:
+	imgs = os.listdir(os.getcwd()+'/' +directory)
 
-	if '.jpg' not in img:
-		continue
-	print img
-	img = cv2.imread(directory+'/'+img)
-	# recognize_card(img)
-	show_image('img',img)
-	suit, rank = recognize_card(img)
-	print suit, rank
+	for img in imgs:
+
+		if '.jpg' not in img:
+			continue
+		print img
+		img = cv2.imread(directory+'/'+img)
+		# recognize_card(img)
+		show_image('img',img)
+		suit, rank = recognize_card(img)
+		print suit, rank
