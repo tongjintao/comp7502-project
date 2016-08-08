@@ -97,10 +97,8 @@ def get_trapezoids(colored_image):
 
     # Select the (white) areas that look like a card
 
-    contour_image, contours, hierarchy = cv2.findContours(test_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    contours = sorted(contours, key=cv2.contourArea, reverse=True)
-
-    n_components = len(contours)
+    ret, markers = cv2.connectedComponents(test_img)
+    n_components = np.max(markers)
 
     min_xs = {}
     max_xs = {}
@@ -108,26 +106,29 @@ def get_trapezoids(colored_image):
     max_ys = {}
     counts = {}
     is_eligible = {}
-    regions = []
-    for i in range(0, n_components):
+    for i in range(1, n_components + 1):
+        counts[i] = np.sum(markers == i)
         is_eligible[i] = False
-        regions.append(contours[i])
-        min_xs[i] = np.min(contours[i][:, :, 0])
-        max_xs[i] = np.max(contours[i][:, :, 0])
-        min_ys[i] = np.min(contours[i][:, :, 1])
-        max_ys[i] = np.max(contours[i][:, :, 1])
+        any_x = np.sum(markers == i, axis=0)
+        where_x = np.where(any_x > 0)[0]
+        min_xs[i] = where_x[0]
+        max_xs[i] = where_x[-1]
+        any_y = np.sum(markers == i, axis=1)
+        where_y = np.where(any_y > 0)[0]
+        min_ys[i] = where_y[0]
+        max_ys[i] = where_y[-1]
         # Too small
         if min_xs[i] == max_xs[i] or min_ys[i] == max_ys[i]:
             continue
         # No blobs were detected within the region
-#        if np.sum((markers == i) * (mask[1:-1, 1:-1])) == 0:
-#            continue
+        if np.sum((markers == i) * (mask[1:-1, 1:-1])) == 0:
+            continue
         # Aspect ratio fits our detection
         if np.float(max_xs[i] - min_xs[i]) / np.float(max_ys[i] - min_ys[i]) >= MIN_ASPECT_RATIO and np.float(max_xs[i] - min_xs[i]) / np.float(max_ys[i] - min_ys[i]) <= 1 / MIN_ASPECT_RATIO:
             is_eligible[i] = True
 
     eligible_regions = []
-    for i in range(0, n_components):
+    for i in range(1, n_components + 1):
         if is_eligible[i]:
             eligible_regions.append(i)
 
@@ -136,9 +137,13 @@ def get_trapezoids(colored_image):
     approxs = []
 
     for region in eligible_regions:
-        approx = regions[region].reshape((-1, regions[region].shape[2]))
-        hull = scipy.spatial.ConvexHull(approx)
-        approx = approx[hull.vertices]
+        # Convex Hull
+        points = np.where(markers == region)
+        points = np.vstack((points[1], points[0])).transpose()  # Transposed the coordinates to suit OpenCV's coordinate system
+        hull = scipy.spatial.ConvexHull(points)
+        vertices = points[hull.vertices]
+        # Find bounding quadrilateral
+        approx = vertices.copy()
         last_approx_shape = approx.shape[0]
         delta = DELTA_DELTA
         while approx.shape[0] > 4 and delta < 1:
