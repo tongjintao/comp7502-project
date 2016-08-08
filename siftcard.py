@@ -3,14 +3,6 @@ import cv2
 #import sift
 import glob
 
-cvSift = cv2.SIFT()
-bf = cv2.BFMatcher()
-modelCards = {}
-for imagePath in glob.glob("*.jpg"):
-	modelCard = cv2.imread(imagePath, 0)
-	modelSiftValues = getSiftFeatureValue(modelCard)
-	cardName = imagePath.replace(".jpg", "")
-	modelCards[cardName] = modelSiftValues
 
 def getSiftFeatureValue(img):
 	_, des = cvSift.detectAndCompute(img, None)
@@ -36,3 +28,13 @@ def cardRecognize(card):
 			bestMatch = modelCardName
 
 	return bestMatch
+
+
+cvSift = cv2.SIFT()
+bf = cv2.BFMatcher()
+modelCards = {}
+for imagePath in glob.glob("*.jpg"):
+	modelCard = cv2.imread(imagePath, 0)
+	modelSiftValues = getSiftFeatureValue(modelCard)
+	cardName = imagePath.replace(".jpg", "")
+	modelCards[cardName] = modelSiftValues
