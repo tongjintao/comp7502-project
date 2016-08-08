@@ -3,16 +3,17 @@
 from __future__ import print_function
 import sys
 import subprocess
+import time
+from datetime import datetime
 import argparse
 import numpy as np
 import scipy.spatial
 import cv2
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--file", dest="filename", help="Input file name.")
-parser.add_argument("--aspect", dest="aspect", default=1.0, help="Starting aspect ratio (default is 1).")
-parser.add_argument("--recognize", dest="recognize", action="store_true", default=False, help="Recognize images as well.")
-parser.add_argument("--binary", dest="binary", action="store_true", default=False, help="Produce binary image only.")
+parser.add_argument("--program", dest="program", help="Name of program for analysis.", default=None)
+parser.add_argument("--python3", dest="python3", action="store_true", help="Use Python 3.")
+parser.add_argument("--fps", dest="fps", help="FPS.", default=10)
 
 options = parser.parse_args()
 
@@ -24,7 +25,9 @@ np.set_printoptions(threshold=np.nan)
 
 # Constants
 
-TOO_LARGE = 1024
+INPUT_DIM = (960, 540)  # Resize
+
+TOO_LARGE = 1024  # Has no effect
 
 DUMMY_VALUE = 0
 
@@ -41,21 +44,6 @@ FONT_SIZE = 2
 FONT_THICKNESS = 3
 
 # Variables
-
-image_name = options.filename
-
-try:
-    colored_image = cv2.imread(image_name)
-    mean_shifted_image = cv2.pyrMeanShiftFiltering(colored_image, FILTER_SIZE, 32)
-    image = cv2.cvtColor(mean_shifted_image, cv2.COLOR_BGR2GRAY)
-except:
-    image = cv2.imread(image_name, cv2.IMREAD_GRAYSCALE)
-
-width = image.shape[1]
-height = image.shape[0]
-corners = np.array([[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]], dtype=np.float32)
-
-current_aspect_ratio = options.aspect
 
 # Blob detection params
 
@@ -81,36 +69,37 @@ params.filterByInertia = False
 
 detector = cv2.SimpleBlobDetector_create(params)
 
-# Trial-and-error
+# Set up video capture
 
-has_error = True
+cap = cv2.VideoCapture(0)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, INPUT_SIZE[0])
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, INPUT_SIZE[1])
 
-while has_error:
+last_capture_time = datetime.now().timestamp()
+
+while True:
+
+    if datetime.now().timestamp() < last_capture_time + 1000 / float(options.fps):
+        time.sleep(0.01)
+        continue
 
     try:
 
         has_error = False
 
-        # Resize by aspect ratio
-
-        new_width = int(width * current_aspect_ratio)
-        new_height = int(height * current_aspect_ratio)
-        new_corners = np.array([[0, 0], [new_width - 1, 0], [new_width - 1, new_height - 1], [0, new_height - 1]], dtype=np.float32)
-        transform = cv2.getPerspectiveTransform(corners, new_corners)
-        img = cv2.warpPerspective(image, transform, (new_width, new_height))
+        _, frame = cv2.read()
 
         # Preprocessing
+
+        mean_shifted_image = cv2.pyrMeanShiftFiltering(frame, FILTER_SIZE, 32)
+        img = cv2.cvtColor(mean_shifted_image, cv2.COLOR_BGR2GRAY)
 
         # Gaussian blur and thresholding
 
         blurred_image = cv2.GaussianBlur(img, (FILTER_SIZE, FILTER_SIZE), 6)
         thresh, binary_image = cv2.threshold(blurred_image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
-        if options.binary:
-            cv2.imwrite("binary.bmp", binary_image)
-            exit(0)
-
-        test_img = binary_image.copy()
+        test_img = binary_image
 
         # Repeatedly detect and remove blobs
 
@@ -136,13 +125,6 @@ while has_error:
             test_img = test_img | mask[1:-1, 1:-1]
             if all_seen:
                 break
-
-        # Perform a dilation to remove dirt
-
-#        kernel = np.ones((FILTER_SIZE, FILTER_SIZE), dtype=np.uint8)
-#        dilated = cv2.dilate(test_img, kernel, iterations=1)
-
-#        test_img = dilated
 
         # Select the (white) areas that look like a card
 
@@ -230,61 +212,18 @@ while has_error:
 
         print(approxs, file=sys.stderr)
 
-    except Exception as e:
+        # Output borders for verification
+
+        annotated_image = frame
+
+        for (region, approx) in zip(eligible_regions, approxs):
+            cv2.drawContours(annotated_image, [np.int0(approx)], 0, (int(np.random.uniform(256)), int(np.random.uniform(256)), int(np.random.uniform(256))), 2)
+
+        cv2.imshow("Camera", annotated_image)
+
+    except InterruptedException as e:
 
         print(e, file=sys.stderr)
-        has_error = True
-        current_aspect_ratio *= 0.5
-
-# Output borders for verification
-
-annotated_image = colored_image.copy()
-
-for (region, approx) in zip(eligible_regions, approxs):
-    print(approx / current_aspect_ratio, file=sys.stderr)
-    line_thickness = int(2 / current_aspect_ratio)
-    cv2.drawContours(annotated_image, [np.int0(approx / current_aspect_ratio)], 0, (int(np.random.uniform(256)), int(np.random.uniform(256)), int(np.random.uniform(256))), line_thickness)
-
-cv2.imwrite("out.bmp", annotated_image)
-
-# Perspective (and inverse) transform
-
-output_corners = np.array([[0, 0], [OUTPUT_DIM[0] - 1, 0], [OUTPUT_DIM[0] - 1, OUTPUT_DIM[1] - 1], [0, OUTPUT_DIM[1] - 1]], dtype=np.float32)
-
-output_images = []
-for (region, approx) in zip(eligible_regions, approxs):
-    perspective = approx.astype(np.float32)
-    perspective /= current_aspect_ratio
-    transform = cv2.getPerspectiveTransform(perspective, output_corners)
-    warp = cv2.warpPerspective(colored_image, transform, OUTPUT_DIM)
-    output_images.append(warp)
-
-for (region, output_image) in zip(eligible_regions, output_images):
-    cv2.imwrite("%d.bmp" % region, output_image)
-
-# Recognize
-
-if options.recognize:
-
-    matches = []
-
-    for region in eligible_regions:
-
-        process = subprocess.Popen(["python3", "calibrate.py", "--file=%d.bmp" % region], stdout=subprocess.PIPE)
-        out, err = process.communicate()
-        tokens = out.decode("utf-8").strip().split(" ")
-        print("Region %d: %s" % (region, tokens[-1]), file=sys.stderr)
-        matches.append(tokens[-1])
-
-    # Annotate in original image
-
-    for (region, approx, match) in zip(eligible_regions, approxs, matches):
-
-        center_of_mass = np.mean(approx, axis=0)
-        font_scale = int(FONT_SIZE / current_aspect_ratio)
-        font_thickness = int(FONT_THICKNESS / current_aspect_ratio)
-        text_size = cv2.getTextSize(match, FONT, font_scale, font_thickness)
-        cv2.putText(annotated_image, match, (int(center_of_mass[0] / float(current_aspect_ratio) - text_size[0][0] / 2.0), int(center_of_mass[1] / float(current_aspect_ratio) + text_size[0][1] / 2.0)), FONT, font_scale, (0, 255, 0), font_thickness)
-
-    cv2.imwrite("out.bmp", annotated_image)
+        cap.release()
+        cv2.destroyAllWindows()
 
