@@ -11,15 +11,9 @@ import scipy.spatial
 import cv2
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--program", dest="program", help="Name of program for analysis.", default=None)
-parser.add_argument("--python3", dest="python3", action="store_true", help="Use Python 3.")
 parser.add_argument("--fps", dest="fps", help="FPS.", default=10)
 
 options = parser.parse_args()
-
-if options.filename is None:
-    parser.print_help()
-    exit(1)
 
 np.set_printoptions(threshold=np.nan)
 
