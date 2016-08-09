@@ -72,7 +72,7 @@ class descriptor(object):
 					localDir[5]+=m
 				if t>P*-3/18 and t<=P*-2/18:
 					localDir[6]+=m	
-				if t>P*-2/18and t<=P*-1/18:
+				if t>P*-2/18 and t<=P*-1/18:
 					localDir[7]+=m
 				if t>P*-1/18 and t<=0:
 					localDir[8]+=m
