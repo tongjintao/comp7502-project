@@ -11,7 +11,7 @@ Linux / Mac OS environment is recommended.
 
 The command is as follows:
 
-python 2-different-method-poker-recognition.py
+python 3-different-method-poker-recognition.py
 
 Press Space Bar to make a webcam capture. The program would print the guesses from the three methods.
 
