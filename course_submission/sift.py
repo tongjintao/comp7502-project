@@ -6,6 +6,8 @@ import siftcore
 import descriptor
 import extrema
 
+#A facade interface for SIFT calling
+
 class sift(object):
 
     def getDescriptor(self, img):
@@ -28,7 +30,7 @@ class sift(object):
 
         for p in pDes.keys():
             x = pDes[p]
-            re = tree.query(x,k=2,eps=0.000001,p=2,distance_upper_bound=numpy.inf)
+            re = tree.query(x, k=2, eps=0.000001, p=2, distance_upper_bound=numpy.inf)  #Tree method imported from SciPy
 
             if re[0][1]==0 or (re[0][1]!=0 and re[0][0]/re[0][1] < 0.88):
                 pLoc = p

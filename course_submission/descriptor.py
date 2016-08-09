@@ -13,7 +13,7 @@ class descriptor(object):
 
 	def direction(self,i,j,arr):
 		v1 = math.sqrt((arr[i+1,j]-arr[i-1,j])**2 +(arr[i,j+1]-arr[i,j-1])**2)
-		v2 = math.atan((arr[i,j+1]-arr[i,j-1])/(arr[i+1,j]-arr[i-1,j] + 0.000034))
+		v2 = math.atan((arr[i,j+1]-arr[i,j-1]) / (arr[i+1,j]-arr[i-1,j] + 0.000034))
 		return v1,v2
 
 	#Array of features of descriptors

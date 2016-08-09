@@ -3,6 +3,8 @@ import math
 import scipy
 import scipy.spatial
 
+#For local extrema values extraction
+
 class extrema(object):
 
     def run(self,ims,pa):
