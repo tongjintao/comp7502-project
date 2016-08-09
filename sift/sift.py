@@ -4,6 +4,7 @@ import scipy
 import scipy.spatial
 import siftcore
 import descriptor
+import extrema
 
 class sift(object):
     def __init__(self):
@@ -13,8 +14,9 @@ class sift(object):
     	img = numpy.array(img)
     	core = siftcore.siftcore()
     	des = descriptor.descriptor()
+    	ex = extrema.extrema()
     	imgDog = core.creatdog(img)
-    	feat = ex.get_Patextremes(imgDog, img)
+    	feat = ex.run(imgDog, img)
     	return des.creatDes(feat, img)
 
     def match(self,p,s):
