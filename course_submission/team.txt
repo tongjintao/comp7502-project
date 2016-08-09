@@ -1,0 +1,18 @@
+Group 24
+
+Ng Kwong Hei
+- Preprocessing code
+- Code for wavelet compression-based card matching
+
+Tong Jin Tao Virgil
+- Script showcasing all three methods of card recognition
+- Code for histogram-based card recognition
+- Code for contour intersection-based card recognition
+
+Shi Di
+- Code for SIFT-based card recognition
+- Live demo code (also SIFT-based)
+
+Please note that some of the source codes depend on OpenCV. 
+For each of the image recognition methods, we also built our own card database to match against.
+
