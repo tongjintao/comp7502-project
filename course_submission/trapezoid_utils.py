@@ -99,6 +99,10 @@ def get_trapezoids(colored_image):
 
     # Select the (white) areas that look like a card
 
+    # Note: OpenCV 2.4 does not have an implementation for finding connected components. 
+    # In order to maintain compatibility, findContours was used instead of re-implementing
+    # much of the code.
+
     contours, hierarchy = cv2.findContours(test_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
@@ -142,6 +146,7 @@ def get_trapezoids(colored_image):
         hull = scipy.spatial.ConvexHull(approx)
         approx = approx[hull.vertices]
         last_approx_shape = approx.shape[0]
+        # Use the finest approximation possible
         delta = DELTA_DELTA
         while approx.shape[0] > 4 and delta < 1:
             approx = cv2.approxPolyDP(approx, delta * cv2.arcLength(approx, True), True)

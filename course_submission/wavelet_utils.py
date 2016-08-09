@@ -15,7 +15,7 @@ FILTER_SIZE = 7
 
 WAV = 'db8'
 
-COMPRESSION_LEVEL = 3
+COMPRESSION_LEVEL = 3  # Shrink by a factor of 8x8=64 (2^3 = 8)
 
 DATA_DIRECTORY = "coeffs"
 
@@ -34,8 +34,12 @@ def recognize_card(img):
     thresh, binary = cv2.threshold(blurred_image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
     # Wavelet decomposition
+    # Assume periodic signal (such that the artifacts at the boundaries can be minimized, for our purpose)
 
     coefs = pywt.wavedec2(binary, WAV, level=COMPRESSION_LEVEL, mode='per')
+
+    # Retain only the first-level approximation
+    # And zero all remaining coefficients
 
     coefs2 = copy.copy(coefs)
 
@@ -43,17 +47,19 @@ def recognize_card(img):
         cH, cV, cD = (np.zeros(coefs[i][0].shape), np.zeros(coefs[i][1].shape), np.zeros(coefs[i][2].shape))
         coefs2[i] = (cH, cV, cD)
 
+    # Start with no guess
+
     guess = None
     max_corr = -1
 
-    # Handle rotations
+    # Handle rotations (4 times, 90 degrees each)
 
     for rotation in range(0, 4):
 
         for (card, coef) in zip(possible_cards, possible_card_coefs):
             corr = np.corrcoef(coefs[0].reshape(-1), coef.reshape(-1))
             corr = corr[0, 1]
-#            print("%s: %f" % (card, corr), file=sys.stderr)
+            # Update guess if better
             if guess is None or corr > max_corr:
                 guess = card
                 max_corr = corr

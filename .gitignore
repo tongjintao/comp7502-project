@@ -1,5 +1,6 @@
 # Temporary and output images
 
 __pycache__/
+*.pyc
 *.bmp
 
