@@ -50,16 +50,15 @@ class siftcore(object):
         return new_arr
 
     def dist(self,pair0,pair1,pair2):
+        
         ax = pair0[0][0]
         ay = pair0[0][1]
         Ax = pair0[1][0]
         Ay = pair0[1][1]
-
         bx = pair1[0][0]
         by = pair1[0][1]
         Bx = pair1[1][0]
         By = pair1[1][1]
-
         cx = pair2[0][0]
         cy = pair2[0][1]
         Cx = pair2[1][0]
@@ -74,8 +73,3 @@ class siftcore(object):
         distB_C = math.sqrt((Bx-Cx)**2+(By-Cy)**2)
                             
         return dista_b,dista_c,distb_c,distA_B,distA_C,distB_C 
-
-
-    def cal_area(self,x,y,z):
-        p = (x+y+z)/2
-        return math.sqrt(p*(p-x)*(p-y)*(p-z))
