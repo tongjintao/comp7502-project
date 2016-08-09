@@ -68,6 +68,8 @@ def get_trapezoids(colored_image):
     blurred_image = cv2.GaussianBlur(image, (FILTER_SIZE, FILTER_SIZE), 6)
     thresh, binary_image = cv2.threshold(blurred_image, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
+    cv2.imshow("thresholded", binary_image)
+
     test_img = binary_image
 
     # Repeatedly detect and remove blobs

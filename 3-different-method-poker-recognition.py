@@ -28,11 +28,7 @@ while(True):
             print hcc_guess
             guess = wave.recognize_card(card)
             print "wavelet-compression prediction: "    
-            print hcc_guess
-            print "sift prediction: "
-            print siftcard.cardRecognize(card)
-
-
+            print guess
 
 cap.release()
 cv2.destroyAllWindows()

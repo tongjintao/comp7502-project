@@ -263,32 +263,43 @@ def recognize_card(img):
 
 	height, width = img_threshold.shape
 
-	# crop out the top left corner
-	img_threshold = crop_img(img_threshold, 0, 0, width/3, height/3)
+	# # crop out the top left corner
+	# img_threshold = crop_img(img_threshold, 0, 0, width/3, height/3)
 
-	show_image('croped',img_threshold)
+	#show_image('croped',img_threshold)
 	# find contours in the image
-	ctrs, hier = cv2.findContours(img_threshold.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)	
 	
-	possible_suits = recognize_suit(ctrs, hier)
-	if len(possible_suits) == 0:
-		suit = None	
-	else:
-		suit = min(possible_suits.items(), key=lambda x: x[1])[0]
+	
+	img_rotate = img_threshold.copy()
 
+	possible_suit = None
+	possible_suit_score = 0.05
+	possible_rank = None
+	possible_rank_score = 0.05
 
-	possible_ranks = recognize_rank(ctrs, hier)
+	for rotation in range(0,4):
+		# crop out the top left corner
+		img_crop = crop_img(img_rotate, 0, 0, width/3, height/3)	
+		
+		ctrs, hier = cv2.findContours(img_crop.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)	
+		possible_suits = recognize_suit(ctrs, hier)
+		for suit, score in possible_suits.iteritems():
+			if possible_suit is None or score < possible_suit_score:
+				 possible_suit_score = score
+				 possible_suit = suit
+		possible_ranks = recognize_rank(ctrs, hier)
+		for rank, score in possible_ranks.iteritems():
+			if possible_rank is None or score < possible_rank_score:
+				 possible_rank_score = score
+				 possible_rank = rank
+		
+		img_rotate = np.rot90(img_rotate)
+		
 	
-	if len(possible_ranks) ==0:
-		rank = None
-	else:
-		rank = min(possible_ranks.items(), key=lambda x: x[1])[0]
-	
-	
-	if suit == None or rank == None:
+	if possible_suit == None or possible_rank == None:
 		guess = None
 	else: 
-		guess = suit+' '+rank
+		guess = possible_suit+' '+possible_rank
 
 	return guess
 
@@ -307,6 +318,6 @@ if __name__ == "__main__":
 		print img
 		img = cv2.imread(directory+'/'+img)
 		# recognize_card(img)
-		show_image('img',img)
-		suit, rank = recognize_card(img)
-		print suit, rank
+		#show_image('img',img)
+		guess = recognize_card(img)
+		print guess
