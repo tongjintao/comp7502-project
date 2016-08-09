@@ -5,9 +5,7 @@ import os
 rank_templates = {}
 suit_templates = {}
 rank_list = ["ace", "two", "three", "four", "five", "six", "seven", "eight", "nine", "jack", "queen", "king"]
-#rank_list = ["eight"]
 suit_list = ["heart", "spade", "club", "diamond"]
-# suit_list = ["heart"]
 
 def highlight_contour(img, ctr, name="highlight"):
 	# highlight proceed contour in green
@@ -18,6 +16,7 @@ def highlight_contour(img, ctr, name="highlight"):
 	show_image(name, img_highlight)
 
 def show_image(img_title, img):
+	# for show image
 	cv2.imshow(img_title,img)
 	cv2.waitKey(0)
 	cv2.destroyAllWindows()
@@ -34,6 +33,7 @@ def crop_img(img_threshold, x, y, w, h):
 	return ctr_crop
 
 def transform_list(numbers, desired_range):
+	# transform a list of number to range 0 to len
 	max_number = max(numbers)
 	min_number = min(numbers)
 	range_number = max_number - min_number
@@ -51,16 +51,17 @@ def make_histogram(contour):
 	y_list = []
 	
 	for contour_point in contour:	
-		# convert numpy.arrayto tuple
+		# break contour point in x-coordinate and y-coordinate
 		contour_point_tuple = map(tuple, contour_point)[0]
 		x_list.append(contour_point_tuple[0])
 		y_list.append(contour_point_tuple[1])
 
-	# resize it into a 10-ranged list of number for easier histogram comparison
+	# resize it into a 8-ranged list of number for easier histogram comparison
 	size = 8
 	x_list = transform_list(x_list, size)
 	y_list = transform_list(y_list, size)
 	
+	# make histogram
 	x_histogram = np.histogram(x_list, bins=np.arange(size+1), density=True) 
 	y_histogram = np.histogram(y_list, bins=np.arange(size+1), density=True)
 	
@@ -97,6 +98,7 @@ def load_template_suit():
 
 	for suit in suit_list:
 
+		# load template
 		template = cv2.imread("suit_template/" + suit + ".png")
 		
 		# convert to grayscale and apply Gaussian filtering and thresholding
@@ -130,6 +132,8 @@ def load_template_suit():
 def load_template_rank():
 
 	for rank in rank_list:
+		
+		# load template
 		template = cv2.imread("rank_template/" + rank + ".png")
 		
 		# convert to grayscale and apply Gaussian filtering and thresholding
@@ -249,9 +253,6 @@ def recognize_card(img):
 	img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 	img_gray = cv2.GaussianBlur(img_gray, (3,3),0)	
 
-	# # adaptive threshold the image
-	# img_threshold = cv2.adaptiveThreshold(img_gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3,2)
-
 	# find threshold to best recognize image
 	img_histogram = np.histogram(img_gray.flatten(), bins=np.arange(256), density=True) 
 	#threshold = find_threshold(img_histogram)
@@ -259,19 +260,10 @@ def recognize_card(img):
 	# threshold the image
 	threshold, img_threshold = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
 
-	#show_image('image', img_threshold)
-
 	height, width = img_threshold.shape
-
-	# # crop out the top left corner
-	# img_threshold = crop_img(img_threshold, 0, 0, width/3, height/3)
-
-	#show_image('croped',img_threshold)
-	# find contours in the image
-	
-	
 	img_rotate = img_threshold.copy()
 
+	# Find possible suit and rank by minimal histogram difference
 	possible_suit = None
 	possible_suit_score = 0.05
 	possible_rank = None
